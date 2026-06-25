@@ -218,4 +218,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Custom
-test/instructor_reference/
+tests/instructor_reference/
+docs/instructor-answer-key.md

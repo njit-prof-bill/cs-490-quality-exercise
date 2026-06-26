@@ -7,14 +7,16 @@ VALID_STATUSES = {status.value for status in StudentStatus}
 
 
 def normalize_email(email: str) -> str:
-    return email.lower()
+    # CSV-01: trim whitespace and lowercase
+    return email.strip().lower()
 
 
-def parse_student_status(value: str) -> StudentStatus:
+def parse_student_status(value: str) -> tuple[StudentStatus, bool]:
+    """Return (status, is_unknown) where is_unknown is True for unrecognised values."""
     normalized = value.strip().lower() or StudentStatus.ACTIVE.value
     if normalized not in VALID_STATUSES:
-        return StudentStatus.ACTIVE
-    return StudentStatus(normalized)
+        return StudentStatus.ACTIVE, True
+    return StudentStatus(normalized), False
 
 
 def build_student(row: dict[str, str], row_number: int) -> tuple[Student | None, list[ValidationIssue]]:
@@ -44,12 +46,24 @@ def build_student(row: dict[str, str], row_number: int) -> tuple[Student | None,
         )
     if issues:
         return None, issues
+    raw_status = row.get("status", "")
+    status, is_unknown = parse_student_status(raw_status)
+    if is_unknown:
+        # STATE-06: unknown status → validation issue, default to active
+        issues.append(
+            ValidationIssue(
+                requirement_id="STATE-06",
+                message=f"Unknown student status '{raw_status}'; defaulting to active.",
+                row_number=row_number,
+                source="students",
+            )
+        )
     student = Student(
         student_id=student_id,
         first_name=first_name,
         last_name=last_name,
         email=normalize_email(email),
-        status=parse_student_status(row.get("status", "")),
+        status=status,
         section=section,
     )
     return student, issues

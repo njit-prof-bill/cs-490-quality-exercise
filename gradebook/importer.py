@@ -36,6 +36,14 @@ def _read_csv_rows(path: str | Path, expected_source: str) -> tuple[list[dict[st
         )
         return [], issues
     if not rows:
+        # CSV-06: header present but no data rows
+        issues.append(
+            ValidationIssue(
+                requirement_id="CSV-06",
+                message=f"{expected_source} CSV has a header but no data rows.",
+                source=expected_source,
+            )
+        )
         return [], issues
     return rows, issues
 
@@ -55,7 +63,7 @@ def import_students(path: str | Path) -> tuple[dict[str, Student], list[Validati
                     source="students",
                 )
             )
-            raise
+            continue  # CSV-07: skip bad row, continue processing
         issues.extend(row_issues)
         if student is not None:
             students.append(student)

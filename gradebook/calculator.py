@@ -68,7 +68,9 @@ def _assignment_percent(record: GradeRecord | None, assignment: Assignment) -> t
 def _drop_lowest_if_needed(category: str, assignments: list[Assignment], values: list[tuple[Assignment, float, float]]) -> list[tuple[Assignment, float, float]]:
     if category != "QUIZ":
         return values
-    if len(values) < 2:
+    # CORE-05: only drop when at least 4 non-excused quiz scores (possible > 0 means not excused)
+    non_excused = [v for v in values if v[2] > 0]
+    if len(non_excused) < 4:
         return values
     ordered = sorted(values, key=lambda item: (item[1] / item[2]) if item[2] else 1.0)
     return ordered[1:]
@@ -106,8 +108,9 @@ def compute_student_grade(data: GradebookData, student: Student) -> StudentCompu
         if category != "EXTRA_CREDIT":
             total += average_percent * weight
         else:
-            total += average_percent
-    numeric_grade = total
+            # CORE-06: extra credit adds raw earned points, capped at 100 after all categories
+            total += earned_points
+    numeric_grade = min(total, 100.0)  # CORE-06: cap at 100
     return StudentComputation(
         student=student,
         numeric_grade=numeric_grade,
@@ -148,4 +151,5 @@ def class_median(data: GradebookData) -> float:
     midpoint = len(grades) // 2
     if len(grades) % 2 == 1:
         return grades[midpoint]
-    return grades[midpoint - 1]
+    # REPORT-05: even count → mean of two middle grades
+    return (grades[midpoint - 1] + grades[midpoint]) / 2

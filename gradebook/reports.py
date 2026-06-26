@@ -7,8 +7,7 @@ from .models import GradebookData, StudentComputation, StudentStatus
 
 
 def _format_percent(value: float) -> str:
-    return f"{value:.1f}%"
-
+    return f"{value:.2f}%"
 
 def build_validation_report(data: GradebookData) -> str:
     if not data.validation_issues:
@@ -68,7 +67,7 @@ def build_category_report(data: GradebookData) -> str:
                 continue
             for summary in result.category_summaries:
                 if summary.category == category:
-                    category_scores.append(summary.earned_points)
+                    category_scores.append(summary.average_percent)
                     weight = summary.weight
         average = 0.0 if not category_scores else mean(category_scores)
         lines.append(f"{category} | weight={weight:g} | average={_format_percent(average)}")
@@ -76,8 +75,8 @@ def build_category_report(data: GradebookData) -> str:
 
 
 def build_rank_report(data: GradebookData) -> str:
-    results = [result for result in compute_all_students(data) if result.student.status != StudentStatus.INACTIVE]
-    ranked = sorted(results, key=lambda item: (item.numeric_grade, item.student.email))
+    results = [result for result in compute_all_students(data) if result.student.status != StudentStatus.WITHDRAWN]
+    ranked = sorted(results, key=lambda item: (-item.numeric_grade, item.student.email))
     lines = ["Rankings:"]
     for index, result in enumerate(ranked, start=1):
         lines.append(

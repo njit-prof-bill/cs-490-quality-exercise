@@ -36,6 +36,13 @@ def _read_csv_rows(path: str | Path, expected_source: str) -> tuple[list[dict[st
         )
         return [], issues
     if not rows:
+        issues.append(
+            ValidationIssue(
+                requirement_id="CSV-06",
+                message=f"{expected_source} CSV has a header but no data rows.",
+                source=expected_source,
+            )
+        )
         return [], issues
     return rows, issues
 

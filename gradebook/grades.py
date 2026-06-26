@@ -21,7 +21,7 @@ def parse_grade_value(raw_value: str, grading_mode: str) -> float | None:
     if raw_value.strip() == "":
         return None
     if grading_mode == "passfail":
-        token = raw_value.strip()
+        token = raw_value.strip().lower()
         if token in PASS_TOKENS:
             return 1.0
         if token in FAIL_TOKENS:

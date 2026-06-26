@@ -7,7 +7,7 @@ VALID_STATUSES = {status.value for status in StudentStatus}
 
 
 def normalize_email(email: str) -> str:
-    return email.lower()
+    return email.strip().lower()
 
 
 def parse_student_status(value: str) -> StudentStatus:
@@ -44,12 +44,24 @@ def build_student(row: dict[str, str], row_number: int) -> tuple[Student | None,
         )
     if issues:
         return None, issues
+    raw_status = row.get("status", "").strip().lower()
+    parsed_status = parse_student_status(raw_status)
+    valid_statuses = {s.value for s in StudentStatus}
+    if raw_status and raw_status not in valid_statuses:
+        issues.append(
+            ValidationIssue(
+                requirement_id="STATE-06",
+                message=f"Unknown student status '{raw_status}', defaulting to active.",
+                row_number=row_number,
+                source="students",
+            )
+        )
     student = Student(
         student_id=student_id,
         first_name=first_name,
         last_name=last_name,
         email=normalize_email(email),
-        status=parse_student_status(row.get("status", "")),
+        status=parsed_status,
         section=section,
     )
     return student, issues

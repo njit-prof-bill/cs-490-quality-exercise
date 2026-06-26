@@ -8,17 +8,29 @@ from .policies import apply_late_policy
 
 
 def _letter_grade(score: float) -> str:
-    rounded = round(score)
-    if rounded >= 90:
+    if score >= 93.00:
         return "A"
-    if rounded >= 80:
+    if score >= 90.00:
+        return "A-"
+    if score >= 87.00:
+        return "B+"
+    if score >= 83.00:
         return "B"
-    if rounded >= 70:
+    if score >= 80.00:
+        return "B-"
+    if score >= 77.00:
+        return "C+"
+    if score >= 73.00:
         return "C"
-    if rounded >= 60:
+    if score >= 70.00:
+        return "C-"
+    if score >= 67.00:
+        return "D+"
+    if score >= 63.00:
         return "D"
+    if score >= 60.00:
+        return "D-"
     return "F"
-
 
 def _group_records_by_student(grades: list[GradeRecord]) -> dict[str, list[GradeRecord]]:
     grouped: dict[str, list[GradeRecord]] = defaultdict(list)
@@ -30,7 +42,7 @@ def _group_records_by_student(grades: list[GradeRecord]) -> dict[str, list[Grade
 def _latest_grade_records(records: list[GradeRecord]) -> dict[str, GradeRecord]:
     latest: dict[str, GradeRecord] = {}
     for record in records:
-        latest.setdefault(record.assignment_id, record)
+        latest[record.assignment_id] = record
     return latest
 
 
@@ -43,7 +55,7 @@ def _category_assignment_groups(assignments: dict[str, Assignment]) -> dict[str,
 
 def _assignment_percent(record: GradeRecord | None, assignment: Assignment) -> tuple[float, float, bool]:
     if record is None:
-        return assignment.max_points, assignment.max_points, True
+    	return 0.0, assignment.max_points, True
     if record.grade_status == GradeStatus.EXCUSED:
         return 0.0, 0.0, False
     adjusted = apply_late_policy(record, assignment)
@@ -55,7 +67,7 @@ def _assignment_percent(record: GradeRecord | None, assignment: Assignment) -> t
 def _drop_lowest_if_needed(category: str, assignments: list[Assignment], values: list[tuple[Assignment, float, float]]) -> list[tuple[Assignment, float, float]]:
     if category != "QUIZ":
         return values
-    if len(values) < 2:
+    if len(values) < 4:
         return values
     ordered = sorted(values, key=lambda item: (item[1] / item[2]) if item[2] else 1.0)
     return ordered[1:]
@@ -94,7 +106,7 @@ def compute_student_grade(data: GradebookData, student: Student) -> StudentCompu
             total += average_percent * weight
         else:
             total += average_percent
-    numeric_grade = total
+    numeric_grade = min(total, 100.0)
     return StudentComputation(
         student=student,
         numeric_grade=numeric_grade,
@@ -135,4 +147,4 @@ def class_median(data: GradebookData) -> float:
     midpoint = len(grades) // 2
     if len(grades) % 2 == 1:
         return grades[midpoint]
-    return grades[midpoint - 1]
+    return (grades[midpoint - 1] + grades[midpoint]) / 2

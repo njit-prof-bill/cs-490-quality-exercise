@@ -66,8 +66,7 @@ def _load(args: argparse.Namespace):
 def _handle_validate(args: argparse.Namespace) -> int:
     data = _load(args)
     print(build_validation_report(data))
-    return 0
-
+    return 1 if data.validation_issues else 0
 
 def _handle_final_grades(args: argparse.Namespace) -> int:
     data = _load(args)

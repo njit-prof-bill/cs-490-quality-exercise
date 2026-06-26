@@ -54,7 +54,8 @@ def apply_late_policy(record: GradeRecord, assignment: Assignment) -> float | No
         return assignment.max_points if record.score >= 1 else 0.0
     score = record.score
     if record.days_late > 0 and assignment.due_date is not None:
-        score -= assignment.max_points * assignment.late_penalty_per_day * record.days_late
+        capped_days = min(record.days_late, 3)
+        score -= assignment.max_points * assignment.late_penalty_per_day * capped_days
     if assignment.min_score_floor is not None:
         score = max(score, assignment.min_score_floor)
     return score
@@ -73,9 +74,7 @@ def validate_grade_value(record: GradeRecord, assignment: Assignment) -> list[Va
                 source="grades",
             )
         )
-    if assignment.grading_mode == "points" and record.score >= assignment.max_points:
-        return issues
-    if assignment.grading_mode == "points" and record.score > assignment.max_points:
+    if assignment.grading_mode == "points" and not assignment.is_extra_credit and record.score > assignment.max_points:
         issues.append(
             ValidationIssue(
                 requirement_id="CSV-04",

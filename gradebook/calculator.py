@@ -8,15 +8,28 @@ from .policies import apply_late_policy
 
 
 def _letter_grade(score: float) -> str:
-    rounded = round(score)
-    if rounded >= 90:
+    if score >= 93.0:
         return "A"
-    if rounded >= 80:
+    if score >= 90.0:
+        return "A-"
+    if score >= 87.0:
+        return "B+"
+    if score >= 83.0:
         return "B"
-    if rounded >= 70:
+    if score >= 80.0:
+        return "B-"
+    if score >= 77.0:
+        return "C+"
+    if score >= 73.0:
         return "C"
-    if rounded >= 60:
+    if score >= 70.0:
+        return "C-"
+    if score >= 67.0:
+        return "D+"
+    if score >= 63.0:
         return "D"
+    if score >= 60.0:
+        return "D-"
     return "F"
 
 
@@ -30,7 +43,7 @@ def _group_records_by_student(grades: list[GradeRecord]) -> dict[str, list[Grade
 def _latest_grade_records(records: list[GradeRecord]) -> dict[str, GradeRecord]:
     latest: dict[str, GradeRecord] = {}
     for record in records:
-        latest.setdefault(record.assignment_id, record)
+        latest[record.assignment_id] = record
     return latest
 
 
@@ -43,12 +56,12 @@ def _category_assignment_groups(assignments: dict[str, Assignment]) -> dict[str,
 
 def _assignment_percent(record: GradeRecord | None, assignment: Assignment) -> tuple[float, float, bool]:
     if record is None:
-        return assignment.max_points, assignment.max_points, True
+        return 0.0, assignment.max_points, True
     if record.grade_status == GradeStatus.EXCUSED:
         return 0.0, 0.0, False
     adjusted = apply_late_policy(record, assignment)
     if adjusted is None:
-        return assignment.max_points, assignment.max_points, True
+        return 0.0, assignment.max_points, True
     return adjusted, assignment.max_points, False
 
 

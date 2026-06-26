@@ -6,12 +6,13 @@ from .models import Assignment, GradeRecord, GradeStatus, ValidationIssue
 
 
 def validate_category_weights(assignments: dict[str, Assignment]) -> list[ValidationIssue]:
-    totals: dict[str, float] = defaultdict(float)
+    # POLICY-01: sum unique per-category weights (all assignments in same category share one weight)
+    category_weights: dict[str, float] = {}
     for assignment in assignments.values():
         if assignment.category == "EXTRA_CREDIT":
             continue
-        totals[assignment.category] += assignment.weight
-    total_weight = sum(totals.values())
+        category_weights[assignment.category] = assignment.weight
+    total_weight = sum(category_weights.values())
     issues: list[ValidationIssue] = []
     if round(total_weight, 2) != 1.0:
         issues.append(
@@ -54,8 +55,11 @@ def apply_late_policy(record: GradeRecord, assignment: Assignment) -> float | No
         return assignment.max_points if record.score >= 1 else 0.0
     score = record.score
     if record.days_late > 0 and assignment.due_date is not None:
-        score -= assignment.max_points * assignment.late_penalty_per_day * record.days_late
+        # POLICY-02: penalty is % of earned score, capped at 3 days
+        capped_days = min(record.days_late, 3)
+        score -= score * assignment.late_penalty_per_day * capped_days
     if assignment.min_score_floor is not None:
+        # POLICY-03: floor applied after late penalty
         score = max(score, assignment.min_score_floor)
     return score
 
@@ -73,9 +77,12 @@ def validate_grade_value(record: GradeRecord, assignment: Assignment) -> list[Va
                 source="grades",
             )
         )
-    if assignment.grading_mode == "points" and record.score >= assignment.max_points:
-        return issues
-    if assignment.grading_mode == "points" and record.score > assignment.max_points:
+    # CSV-04: score > max_points is invalid unless extra credit
+    if (
+        assignment.grading_mode == "points"
+        and not assignment.is_extra_credit
+        and record.score > assignment.max_points
+    ):
         issues.append(
             ValidationIssue(
                 requirement_id="CSV-04",

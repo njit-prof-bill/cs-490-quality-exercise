@@ -7,7 +7,8 @@ from .models import GradebookData, StudentComputation, StudentStatus
 
 
 def _format_percent(value: float) -> str:
-    return f"{value:.1f}%"
+    # CORE-07 / REPORT-07: exactly two decimal places
+    return f"{value:.2f}%"
 
 
 def build_validation_report(data: GradebookData) -> str:
@@ -68,7 +69,8 @@ def build_category_report(data: GradebookData) -> str:
                 continue
             for summary in result.category_summaries:
                 if summary.category == category:
-                    category_scores.append(summary.earned_points)
+                    # REPORT-03: average of percentages, not raw earned points
+                    category_scores.append(summary.average_percent)
                     weight = summary.weight
         average = 0.0 if not category_scores else mean(category_scores)
         lines.append(f"{category} | weight={weight:g} | average={_format_percent(average)}")
@@ -76,8 +78,12 @@ def build_category_report(data: GradebookData) -> str:
 
 
 def build_rank_report(data: GradebookData) -> str:
-    results = [result for result in compute_all_students(data) if result.student.status != StudentStatus.INACTIVE]
-    ranked = sorted(results, key=lambda item: (item.numeric_grade, item.student.email))
+    # STATE-03: exclude withdrawn; REPORT-02: descending grade, ascending email for ties
+    results = [
+        result for result in compute_all_students(data)
+        if result.student.status != StudentStatus.WITHDRAWN
+    ]
+    ranked = sorted(results, key=lambda item: (-item.numeric_grade, item.student.email))
     lines = ["Rankings:"]
     for index, result in enumerate(ranked, start=1):
         lines.append(
@@ -91,9 +97,8 @@ def build_audit_report(data: GradebookData) -> str:
     if not data.validation_issues:
         lines.append("No validation issues detected.")
     else:
+        # STATE-05: audit includes all issues (including grade records)
         for issue in data.validation_issues:
-            if issue.source == "grades":
-                continue
             lines.append(f"- [{issue.requirement_id}] {issue.message}")
     duplicate_grade_keys: dict[tuple[str, str], int] = {}
     for record in data.grades:

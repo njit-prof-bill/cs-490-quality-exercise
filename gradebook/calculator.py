@@ -8,15 +8,28 @@ from .policies import apply_late_policy
 
 
 def _letter_grade(score: float) -> str:
-    rounded = round(score)
-    if rounded >= 90:
+    if score >= 93.0:
         return "A"
-    if rounded >= 80:
+    if score >= 90.0:
+        return "A-"
+    if score >= 87.0:
+        return "B+"
+    if score >= 83.0:
         return "B"
-    if rounded >= 70:
+    if score >= 80.0:
+        return "B-"
+    if score >= 77.0:
+        return "C+"
+    if score >= 73.0:
         return "C"
-    if rounded >= 60:
+    if score >= 70.0:
+        return "C-"
+    if score >= 67.0:
+        return "D+"
+    if score >= 63.0:
         return "D"
+    if score >= 60.0:
+        return "D-"
     return "F"
 
 
@@ -30,7 +43,7 @@ def _group_records_by_student(grades: list[GradeRecord]) -> dict[str, list[Grade
 def _latest_grade_records(records: list[GradeRecord]) -> dict[str, GradeRecord]:
     latest: dict[str, GradeRecord] = {}
     for record in records:
-        latest.setdefault(record.assignment_id, record)
+        latest[record.assignment_id] = record
     return latest
 
 
@@ -43,19 +56,21 @@ def _category_assignment_groups(assignments: dict[str, Assignment]) -> dict[str,
 
 def _assignment_percent(record: GradeRecord | None, assignment: Assignment) -> tuple[float, float, bool]:
     if record is None:
-        return assignment.max_points, assignment.max_points, True
+        return 0.0, assignment.max_points, True
     if record.grade_status == GradeStatus.EXCUSED:
         return 0.0, 0.0, False
     adjusted = apply_late_policy(record, assignment)
     if adjusted is None:
-        return assignment.max_points, assignment.max_points, True
+        return 0.0, assignment.max_points, True
     return adjusted, assignment.max_points, False
 
 
 def _drop_lowest_if_needed(category: str, assignments: list[Assignment], values: list[tuple[Assignment, float, float]]) -> list[tuple[Assignment, float, float]]:
     if category != "QUIZ":
         return values
-    if len(values) < 2:
+    # CORE-05: only drop when at least 4 non-excused quiz scores (possible > 0 means not excused)
+    non_excused = [v for v in values if v[2] > 0]
+    if len(non_excused) < 4:
         return values
     ordered = sorted(values, key=lambda item: (item[1] / item[2]) if item[2] else 1.0)
     return ordered[1:]
@@ -93,8 +108,9 @@ def compute_student_grade(data: GradebookData, student: Student) -> StudentCompu
         if category != "EXTRA_CREDIT":
             total += average_percent * weight
         else:
-            total += average_percent
-    numeric_grade = total
+            # CORE-06: extra credit adds raw earned points, capped at 100 after all categories
+            total += earned_points
+    numeric_grade = min(total, 100.0)  # CORE-06: cap at 100
     return StudentComputation(
         student=student,
         numeric_grade=numeric_grade,
@@ -135,4 +151,5 @@ def class_median(data: GradebookData) -> float:
     midpoint = len(grades) // 2
     if len(grades) % 2 == 1:
         return grades[midpoint]
-    return grades[midpoint - 1]
+    # REPORT-05: even count → mean of two middle grades
+    return (grades[midpoint - 1] + grades[midpoint]) / 2

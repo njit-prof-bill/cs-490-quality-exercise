@@ -9,9 +9,6 @@ class InMemoryStorage:
         self.data = GradebookData()
 
     def load(self, students_path: str, assignments_path: str, grades_path: str) -> GradebookData:
-        fresh = load_gradebook_data(students_path, assignments_path, grades_path)
-        self.data.students.update(fresh.students)
-        self.data.assignments.update(fresh.assignments)
-        self.data.grades.extend(fresh.grades)
-        self.data.validation_issues.extend(fresh.validation_issues)
+        # STATE-01: replace state so repeated loads of same files don't duplicate data
+        self.data = load_gradebook_data(students_path, assignments_path, grades_path)
         return self.data
